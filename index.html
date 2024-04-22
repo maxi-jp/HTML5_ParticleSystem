@@ -3,19 +3,24 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>JS Particle System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="css/style.css" type="text/css" rel="stylesheet" media="">
+    <link href="./css/style.css" type="text/css" rel="stylesheet" media="">
+    <script src="./src/input.js"></script>
+    <script src="./src/utils.js"></script>
+    <script src="./src/colorchangingbg.js"></script>
+    <script src="./src/rainbowbg.js"></script>
+    <script src="./src/particlesystem.js"></script>
+    <script src="./src/code.js"></script>
+    <title>JS Particle System</title>
+    <meta name="author" content="maxi-jp">
 </head>
 <body>
 
-    <div id="container">
-        <canvas id="my_canvas" width="800" height="800"></canvas>
-    </div>
-
-    <script src="./src/input.js"></script>
-    <script src="./src/background.js"></script>
-    <script src="./src/particlesystem.js"></script>
-    <script src="./src/code.js"></script>
+    <canvas id="myCanvas" width="800" height="640"></canvas>
+    <p>A: default particle system (smoke all over the canvas)</p>
+    <p>S: Smoke particles following the mouse</p>
+    <p>D: Rain particle system</p>
+    <p>F: Snow particle system</p>
+    <p>Q: change background</p>
 </body>
 </html>

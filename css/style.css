@@ -3,19 +3,17 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    text-decoration:: none;
+    text-decoration: none;
 }
 
 body {
-    background-color: gray;
+    background-color: grey;
+    text-align: center;
 }
 
-#container {
-    margin: 20px auto;
-    width: 800px;
-}
-
-#my_canvas {
+#myCanvas {
+    margin-top: 20px;
     background-color: white;
+    border: solid 1px black;
 }
 

@@ -1,5 +1,5 @@
 
-class Background {
+class ColorChangingBackground {
     constructor () {
         // background colors
         this.bgColors = [

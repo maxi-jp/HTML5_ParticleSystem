@@ -1,129 +1,296 @@
 
-const PI2 = Math.PI * 2;
-
-var canvas;
-var ctx;
-
-var deltaTime = 0;
-var targetDT = (1 / 60) * 1000;
-var targetDTSeconds = (1 / 60);
+var canvas = /** @type {HTMLCanvasElement} */(null);
+var ctx = /** @type {CanvasRenderingContext2D} */(null);
 
 var time = 0,
-    FPS  = 0,
-    frames    = 0,
+    fps = 0,
+    framesAcum = 0,
     acumDelta = 0;
+var targetDT = 1/60; // 60 fps
+var globalDT;
 
-// images references
-var smoke, smoke2;
+// game variables
+var assets = {
+    smoke: {
+        img: null,
+        path: "./assets/smoke.png"
+    },
+    snow: {
+        img: null,
+        path: "./assets/snow.png"
+    },
+    waterdrop: {
+        img: null,
+        path: "./assets/waterdrop.png"
+    }
+}
+
+const rainParticlesConfig = {
+    maxParticleCount: 1000,
+
+    globalCompositeOperation: "source-over",
+
+    emitterType: 1,
+
+    AREA_X1: -200,
+    AREA_Y1: -100,
+    AREA_X2: 700,
+    AREA_Y2: -100,
+
+    MIN_INITIAL_VELOCITY: 400,
+    MAX_INITIAL_VELOCITY: 800,
+
+    MIN_DIRECTION_X: 0.15,
+    MAX_DIRECTION_X: 0.25,
+
+    MIN_DIRECTION_Y: 1,
+    MAX_DIRECTION_Y: 1,
+
+    MIN_OPACITY_DECREMENT_VELOCITY: 0.1,
+    MAX_OPACITY_DECREMENT_VELOCITY: 1,
+
+    MIN_INITIAL_SCALE: 0.25,
+    MAX_INITIAL_SCALE: 0.33,
+
+    MIN_SCALE_VELOCITY: 0,
+    MAX_SCALE_VELOCITY: 0,
+
+    MIN_INITIAL_ROTATION: -0.05,
+    MAX_INITIAL_ROTATION: 0.05,
+
+    MIN_ROTATION_VELOCITY: 0.001,
+    MAX_ROTATION_VELOCITY: 0.01,
+
+    MIN_TIME_TO_SPAWN_PARTICLE: 0.001,
+    MAX_TIME_TO_SPAWN_PARTICLE: 0.002
+}
+
+const snowParticlesConfig = {
+    maxParticleCount: 1000,
+
+    globalCompositeOperation: "source-over",
+
+    emitterType: 1,
+
+    AREA_X1: -100,
+    AREA_Y1: -100,
+    AREA_X2: 750,
+    AREA_Y2: -100,
+
+    MIN_INITIAL_VELOCITY: 30,
+    MAX_INITIAL_VELOCITY: 60,
+
+    MIN_DIRECTION_X: -0.25,
+    MAX_DIRECTION_X: 0.25,
+
+    MIN_DIRECTION_Y: 1,
+    MAX_DIRECTION_Y: 1,
+
+    MIN_OPACITY_DECREMENT_VELOCITY: 0.05,
+    MAX_OPACITY_DECREMENT_VELOCITY: 0.15,
+
+    MIN_INITIAL_SCALE: 0.05,
+    MAX_INITIAL_SCALE: 0.25,
+
+    MIN_SCALE_VELOCITY: 0,
+    MAX_SCALE_VELOCITY: 0.01,
+
+    MIN_INITIAL_ROTATION: 0,
+    MAX_INITIAL_ROTATION: PI2,
+
+    MIN_ROTATION_VELOCITY: 0.1,
+    MAX_ROTATION_VELOCITY: 0.5,
+
+    MIN_TIME_TO_SPAWN_PARTICLE: 0.001,
+    MAX_TIME_TO_SPAWN_PARTICLE: 0.002
+}
+
+const smokeParticlesConfig = {
+    maxParticleCount: 100,
+
+    globalCompositeOperation: "source-over",
+
+    emitterType: 0,
+
+    MIN_INITIAL_VELOCITY: 10,
+    MAX_INITIAL_VELOCITY: 60,
+
+    MIN_DIRECTION_X: -1,
+    MAX_DIRECTION_X: 1,
+
+    MIN_DIRECTION_Y: -1,
+    MAX_DIRECTION_Y: 1,
+
+    MIN_OPACITY_DECREMENT_VELOCITY: 0.5,
+    MAX_OPACITY_DECREMENT_VELOCITY: 2,
+
+    MIN_INITIAL_SCALE: 0.05,
+    MAX_INITIAL_SCALE: 0.5,
+
+    MIN_SCALE_VELOCITY: 0.25,
+    MAX_SCALE_VELOCITY: 0.5,
+
+    MIN_INITIAL_ROTATION: 0,
+    MAX_INITIAL_ROTATION: PI2,
+
+    MIN_ROTATION_VELOCITY: 0.05,
+    MAX_ROTATION_VELOCITY: 0.15,
+
+    MIN_TIME_TO_SPAWN_PARTICLE: 0.1,
+    MAX_TIME_TO_SPAWN_PARTICLE: 0.01
+}
 
 var particleSystem = null;
 var background = null;
 
-window.requestAnimationFrame = (function (evt) {
-    return window.requestAnimationFrame ||
-    	window.mozRequestAnimationFrame    ||
-    	window.webkitRequestAnimationFrame ||
-    	window.msRequestAnimationFrame     ||
-    	function (callback) {
-        	window.setTimeout(callback, targetDT);
-    	};
-}) ();
+function LoadImages(assets, onloaded) {
+    let imagesToLoad = 0;
+    
+    const onload = () => --imagesToLoad === 0 && onloaded();
 
-
-canvas = document.getElementById("my_canvas");
-if (canvas)
-{
-    ctx = canvas.getContext("2d");
-    if (ctx)
-    {
-        SetupKeyboardEvents();
-        SetupMouseEvents();
-        
-        // load images...
-        smoke = new Image();
-        smoke.src = "./assets/smoke.png";
-        smoke.onload = function() {
-            smoke2 = new Image();
-            smoke2.src = "./assets/smoke.png";
-            smoke2.onload = function() {
-                // start the game
-                Start();
-
-                Loop();
-            }
+    /*const onload = function() {
+        --imagesToLoad;
+        if (imagesToLoad === 0) {
+            onloaded();
         }
-    }
+    }*/
+
+    // iterate through the object of assets and load every image
+    for (let asset in assets) {
+        if (assets.hasOwnProperty(asset)) {
+            imagesToLoad++; // one more image to load
+
+            // create the new image and set its path and onload event
+            const img = assets[asset].img = new Image;
+            img.src = assets[asset].path;
+            img.onload = onload;
+        }
+     }
+    return assets;
 }
 
-function Start ()
-{
-    console.log("Start");
+function Init() {
+    canvas = document.getElementById("myCanvas");
+    ctx = canvas.getContext("2d");
 
-    background = new Background();
-    particleSystem = new ParticleSystem(200);
+    // input setup
+    SetupKeyboardEvents();
+    SetupMouseEvents();
+    
+    // assets loading
+    LoadImages(assets, () => {
+        Start();
+        Loop();
+    });
 }
 
-function Loop ()
-{
-    //console.log("loop");
+function Start() {
+    time = performance.now();
+
+    background = new ColorChangingBackground();
+    particleSystem = new ParticleSystem(assets.smoke.img);
+}
+
+function Loop() {
     requestAnimationFrame(Loop);
     
     // compute FPS
-    var now = Date.now();
-    deltaTime = now - time;
-    // si el tiempo es mayor a 1 seg: se descarta
-    if (deltaTime > 1000)
-        deltaTime = 0;
+    let now = performance.now();
+
+    let deltaTime = (now - time) / 1000;
+    globalDT = deltaTime;
+
     time = now;
 
-    frames++;
+    framesAcum++;
     acumDelta += deltaTime;
 
-    if (acumDelta > 1000)
-    {
-        FPS = frames;
-        frames = 0;
-        acumDelta -= 1000;
+    if (acumDelta >= 1) {
+        fps = framesAcum;
+        framesAcum = 0;
+        acumDelta -= 1;
     }
 
+    if (deltaTime > 1000)
+        return;
+
     // Game logic -------------------
-    Update(deltaTime / 1000);
+    Update(deltaTime);
 
     // Draw the game ----------------
     Draw();
 
     // reset input data
-    input.postUpdate();
+    Input.PostUpdate();
 }
 
-function Update (deltaTime)
-{
-    input.update();
+function Update(deltaTime) {
+    // A / S / D / F: change the particle system
+    if (Input.IsKeyDown(KEY_A))
+        particleSystem = new ParticleSystem(assets.smoke.img);
+    if (Input.IsKeyDown(KEY_S))
+        particleSystem = new ParticleSystem(assets.smoke.img, smokeParticlesConfig);
+    if (Input.IsKeyDown(KEY_D))
+        particleSystem = new ParticleSystem(assets.waterdrop.img, rainParticlesConfig);
+    if (Input.IsKeyDown(KEY_F))
+        particleSystem = new ParticleSystem(assets.snow.img, snowParticlesConfig);
+
+    // Q: change the background
+    if (Input.IsKeyDown(KEY_Q)) {
+        if (background.constructor.name === 'ColorChangingBackground') {
+            // set the rainbow background
+            canvas.setAttribute('style', 'background-color: black');
+            background = new ColorRainbowBackground();
+        }
+        else if (background.constructor.name === 'ColorRainbowBackground') {
+            // set the color changing background
+            canvas.setAttribute('style', 'background-color: white');
+            background = new ColorChangingBackground();
+        }
+    }
 
     background.Update(deltaTime);
 
-    particleSystem.origin.x = input.mouse.x;
-    particleSystem.origin.y = input.mouse.y;
+    particleSystem.emitter.position.x = Input.mouse.x;
+    particleSystem.emitter.position.y = Input.mouse.y;
 
     particleSystem.Update(deltaTime);
 }
 
-function Draw ()
-{
+function Draw() {
     // clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // draw the background
-    background.Draw(ctx);
+    if (background.constructor.name === 'ColorChangingBackground') {
+        // draw the background behind the particles
+        // draw the background
+        background.Draw(ctx);
+        // draw the particle system
+        particleSystem.Draw(ctx);
+    }
+    else if (background.constructor.name === 'ColorRainbowBackground') {
+        // draw the background over the particles
+        // draw the particle system
+        particleSystem.Draw(ctx);
+        // draw the background
+        background.Draw(ctx);
+    }
 
-    // draw the particle system
-    particleSystem.Draw(ctx);
-
-    // reset globalCompositeOperation
-    ctx.globalCompositeOperation = 'source-over';
-
-    // FPS
-    ctx.fillStyle = "white";
-    ctx.font = "12px Comic Sans MS";
-    ctx.fillText('FPS: ' + FPS, 10, 14);
+    // draw the fps
+    DrawStats(ctx);
 }
+
+function DrawStats(ctx) {
+    ctx.textAlign = "start";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(2, 2, 110, 54);
+    ctx.fillStyle = "white";
+    ctx.font = "12px Comic Sans MS regular";
+    
+    
+    ctx.fillText("FPS: " + fps, 6, 14);
+    ctx.fillText("FPS (dt): " + (1 / globalDT).toFixed(2), 6, 32);
+    ctx.fillText("deltaTime: " + (globalDT).toFixed(4), 6, 50);
+}
+
+window.onload = Init;
